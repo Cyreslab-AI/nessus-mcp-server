@@ -26,6 +26,13 @@ export const listScanTemplatesToolSchema = {
   inputSchema: {
     type: 'object',
     properties: {}
+  },
+  annotations: {
+    title: 'List Scan Templates',
+    readOnlyHint: true,
+    destructiveHint: false,
+    idempotentHint: true,
+    openWorldHint: true
   }
 };
 
@@ -73,6 +80,13 @@ export const startScanToolSchema = {
       }
     },
     required: ['target', 'scan_type']
+  },
+  annotations: {
+    title: 'Start Scan',
+    readOnlyHint: false,
+    destructiveHint: true,
+    idempotentHint: false,
+    openWorldHint: true
   }
 };
 
@@ -125,6 +139,13 @@ export const getScanStatusToolSchema = {
       }
     },
     required: ['scan_id']
+  },
+  annotations: {
+    title: 'Get Scan Status',
+    readOnlyHint: true,
+    destructiveHint: false,
+    idempotentHint: true,
+    openWorldHint: true
   }
 };
 
@@ -173,6 +194,13 @@ export const getScanResultsToolSchema = {
       }
     },
     required: ['scan_id']
+  },
+  annotations: {
+    title: 'Get Scan Results',
+    readOnlyHint: true,
+    destructiveHint: false,
+    idempotentHint: true,
+    openWorldHint: true
   }
 };
 
@@ -231,6 +259,13 @@ export const listScansToolSchema = {
   inputSchema: {
     type: 'object',
     properties: {}
+  },
+  annotations: {
+    title: 'List Scans',
+    readOnlyHint: true,
+    destructiveHint: false,
+    idempotentHint: true,
+    openWorldHint: true
   }
 };
 
@@ -301,9 +336,11 @@ const formatScanResults = (results: any): string => {
   // Format each vulnerability
   sortedVulns.forEach((vuln, index) => {
     formattedResults += `### ${index + 1}. ${vuln.name} (${vuln.id})\n\n`;
-    formattedResults += `Severity: ${vuln.severity.toUpperCase()}\n`;
-    formattedResults += `CVSS Score: ${vuln.cvss_score}\n\n`;
-    formattedResults += `${vuln.description}\n\n`;
+    formattedResults += `Severity: ${(vuln.severity || 'unknown').toString().toUpperCase()}\n`;
+    formattedResults += `CVSS Score: ${vuln.cvss_score ?? 'N/A'}\n\n`;
+    if (vuln.description) {
+      formattedResults += `${vuln.description}\n\n`;
+    }
 
     if (vuln.affected_systems && vuln.affected_systems.length > 0) {
       formattedResults += `Affected Systems:\n`;

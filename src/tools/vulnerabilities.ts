@@ -2,7 +2,7 @@
  * Vulnerability-related tools for the Nessus MCP server
  */
 
-import { getVulnerabilityDetails } from '../nessus-api.js';
+import { getVulnerabilityDetails, searchVulnerabilities } from '../nessus-api.js';
 import {
   validateVulnerabilityId,
   handleNessusApiError
@@ -13,16 +13,26 @@ import {
  */
 export const getVulnerabilityDetailsToolSchema = {
   name: 'get_vulnerability_details',
-  description: 'Get detailed information about a specific vulnerability',
+  description:
+    'Get detailed information about a specific vulnerability. In mock mode, pass a CVE id (e.g., CVE-2021-44228). ' +
+    'Against a real Nessus instance, pass the numeric Nessus plugin ID instead (e.g., 156327) - Nessus has no API to ' +
+    'resolve a CVE directly, so use search_vulnerabilities with a scan_id to find the plugin ID for a CVE first.',
   inputSchema: {
     type: 'object',
     properties: {
       vulnerability_id: {
         type: 'string',
-        description: 'ID of the vulnerability (e.g., CVE-2021-44228)'
+        description: 'ID of the vulnerability: a CVE id in mock mode, or a numeric Nessus plugin ID against a real Nessus instance'
       }
     },
     required: ['vulnerability_id']
+  },
+  annotations: {
+    title: 'Get Vulnerability Details',
+    readOnlyHint: true,
+    destructiveHint: false,
+    idempotentHint: true,
+    openWorldHint: true
   }
 };
 
@@ -120,19 +130,41 @@ const formatVulnerabilityDetails = (details: any): string => {
 
 /**
  * Tool to search for vulnerabilities by keyword
+ *
+ * In mock mode this searches the static sample vulnerability list. Against
+ * a real Nessus instance there is no single "search everything" endpoint
+ * (see the design note above searchVulnerabilities in nessus-api.ts), so
+ * this searches actual completed scans' plugin findings: a specific scan
+ * when `scan_id` is given, otherwise the most recently updated completed
+ * scans (bounded, so this stays reasonable on instances with many scans).
  */
 export const searchVulnerabilitiesToolSchema = {
   name: 'search_vulnerabilities',
-  description: 'Search for vulnerabilities by keyword',
+  description:
+    'Search for vulnerabilities by keyword. In mock mode, searches the built-in sample data. Against a real Nessus ' +
+    'instance, searches plugin findings from actual completed scans: pass scan_id to search one specific scan, or omit ' +
+    'it to search the most recently updated completed scans (there is no global vulnerability search API on-prem).',
   inputSchema: {
     type: 'object',
     properties: {
       keyword: {
         type: 'string',
-        description: 'Keyword to search for in vulnerability names and descriptions'
+        description: 'Keyword to search for in vulnerability/plugin names (and descriptions, in mock mode)'
+      },
+      scan_id: {
+        type: 'string',
+        description:
+          'Optional. Real mode only: restrict the search to this scan ID instead of scanning the most recent completed scans.'
       }
     },
     required: ['keyword']
+  },
+  annotations: {
+    title: 'Search Vulnerabilities',
+    readOnlyHint: true,
+    destructiveHint: false,
+    idempotentHint: true,
+    openWorldHint: true
   }
 };
 
@@ -151,38 +183,59 @@ export const searchVulnerabilitiesToolHandler = async (args: Record<string, unkn
       };
     }
 
-    const keyword = args.keyword.toLowerCase();
-
-    // Import vulnerabilities from mock-data
-    const { vulnerabilities } = await import('../mock-data.js');
-
-    // Search for vulnerabilities matching the keyword
-    const matches = vulnerabilities.filter(vuln =>
-      vuln.name.toLowerCase().includes(keyword) ||
-      vuln.description.toLowerCase().includes(keyword)
-    );
-
-    if (matches.length === 0) {
+    if (args.scan_id !== undefined && typeof args.scan_id !== 'string') {
       return {
         content: [
           {
             type: 'text',
-            text: `No vulnerabilities found matching "${args.keyword}"`
+            text: 'Error: scan_id must be a string when provided'
+          }
+        ],
+        isError: true
+      };
+    }
+
+    const keyword = args.keyword;
+    const scanId = args.scan_id as string | undefined;
+
+    const { matches, scannedScans, truncated } = await searchVulnerabilities(keyword, scanId);
+
+    if (matches.length === 0) {
+      const scope = scannedScans.length > 0 ? ` (searched ${scannedScans.length} scan(s): ${scannedScans.map((s) => s.name ?? s.id).join(', ')})` : '';
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `No vulnerabilities found matching "${keyword}"${scope}`
           }
         ]
       };
     }
 
     // Format the search results
-    let results = `# Vulnerability Search Results for "${args.keyword}"\n\n`;
-    results += `Found ${matches.length} matching vulnerabilities:\n\n`;
+    let results = `# Vulnerability Search Results for "${keyword}"\n\n`;
+    results += `Found ${matches.length} matching vulnerabilities`;
+    if (scannedScans.length > 0) {
+      results += ` across ${scannedScans.length} scan(s): ${scannedScans.map((s) => s.name ?? s.id).join(', ')}`;
+    }
+    results += '.\n\n';
+    if (truncated) {
+      results += `Note: more completed scans exist than were searched; pass scan_id to target a specific one.\n\n`;
+    }
 
-    matches.forEach((vuln, index) => {
+    matches.forEach((vuln: any, index: number) => {
       results += `## ${index + 1}. ${vuln.name} (${vuln.id})\n\n`;
-      results += `**Severity:** ${vuln.severity.toUpperCase()}\n`;
-      results += `**CVSS Score:** ${vuln.cvss_score}\n\n`;
-      results += `${vuln.description}\n\n`;
-      results += `To get full details, use the \`get_vulnerability_details\` tool with vulnerability_id: ${vuln.id}\n\n`;
+      results += `**Severity:** ${(vuln.severity || 'unknown').toString().toUpperCase()}\n`;
+      results += `**CVSS Score:** ${vuln.cvss_score ?? 'N/A'}\n`;
+      if (vuln.scan_name || vuln.scan_id) {
+        results += `**Found in scan:** ${vuln.scan_name ?? vuln.scan_id}\n`;
+      }
+      results += '\n';
+      if (vuln.description) {
+        results += `${vuln.description}\n\n`;
+      }
+      const detailId = vuln.plugin_id ?? vuln.id;
+      results += `To get full details, use the \`get_vulnerability_details\` tool with vulnerability_id: ${detailId}\n\n`;
     });
 
     return {

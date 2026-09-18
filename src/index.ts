@@ -38,12 +38,16 @@ const initializeApi = () => {
   const nessusUrl = process.env.NESSUS_URL;
   const nessusAccessKey = process.env.NESSUS_ACCESS_KEY;
   const nessusSecretKey = process.env.NESSUS_SECRET_KEY;
+  // Nessus instances commonly run with a self-signed TLS certificate. This
+  // is opt-in and defaults to strict certificate verification.
+  const allowSelfSigned = /^(1|true|yes)$/i.test(process.env.NESSUS_ALLOW_SELF_SIGNED ?? '');
 
   // Initialize the API client
   return initializeNessusApi({
     url: nessusUrl,
     accessKey: nessusAccessKey,
     secretKey: nessusSecretKey,
+    allowSelfSigned,
     useMock: !(nessusUrl && nessusAccessKey && nessusSecretKey)
   });
 };
