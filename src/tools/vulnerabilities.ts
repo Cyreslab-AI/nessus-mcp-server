@@ -27,6 +27,22 @@ export const getVulnerabilityDetailsToolSchema = {
     },
     required: ['vulnerability_id']
   },
+  outputSchema: {
+    type: 'object',
+    properties: {
+      error: { type: 'string' },
+      id: { type: 'string' },
+      plugin_id: { type: 'string' },
+      name: { type: 'string' },
+      family: { type: 'string' },
+      severity: { type: 'string' },
+      cvss_score: {},
+      description: { type: 'string' },
+      affected_systems: { type: 'array', items: { type: 'string' } },
+      remediation: { type: 'string' },
+      references: { type: 'array', items: { type: 'string' } }
+    }
+  },
   annotations: {
     title: 'Get Vulnerability Details',
     readOnlyHint: true,
@@ -53,7 +69,8 @@ export const getVulnerabilityDetailsToolHandler = async (args: Record<string, un
             text: `Error: ${details.error}`
           }
         ],
-        isError: true
+        isError: true,
+        structuredContent: details
       };
     }
 
@@ -66,7 +83,8 @@ export const getVulnerabilityDetailsToolHandler = async (args: Record<string, un
           type: 'text',
           text: formattedDetails
         }
-      ]
+      ],
+      structuredContent: details
     };
   } catch (error) {
     const mcpError = handleNessusApiError(error);
@@ -159,6 +177,41 @@ export const searchVulnerabilitiesToolSchema = {
     },
     required: ['keyword']
   },
+  outputSchema: {
+    type: 'object',
+    properties: {
+      matches: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            id: { type: 'string' },
+            plugin_id: {},
+            name: { type: 'string' },
+            severity: { type: 'string' },
+            cvss_score: {},
+            description: { type: 'string' },
+            remediation: { type: 'string' },
+            references: { type: 'array', items: { type: 'string' } },
+            count: {},
+            scan_id: { type: 'string' },
+            scan_name: { type: 'string' },
+            affected_systems: { type: 'array', items: { type: 'string' } }
+          }
+        }
+      },
+      scannedScans: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: { id: { type: 'string' }, name: { type: 'string' } },
+          required: ['id']
+        }
+      },
+      truncated: { type: 'boolean' }
+    },
+    required: ['matches', 'scannedScans', 'truncated']
+  },
   annotations: {
     title: 'Search Vulnerabilities',
     readOnlyHint: true,
@@ -208,7 +261,8 @@ export const searchVulnerabilitiesToolHandler = async (args: Record<string, unkn
             type: 'text',
             text: `No vulnerabilities found matching "${keyword}"${scope}`
           }
-        ]
+        ],
+        structuredContent: { matches, scannedScans, truncated }
       };
     }
 
@@ -244,7 +298,8 @@ export const searchVulnerabilitiesToolHandler = async (args: Record<string, unkn
           type: 'text',
           text: results
         }
-      ]
+      ],
+      structuredContent: { matches, scannedScans, truncated }
     };
   } catch (error) {
     const mcpError = handleNessusApiError(error);

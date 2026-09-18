@@ -27,6 +27,26 @@ export const listScanTemplatesToolSchema = {
     type: 'object',
     properties: {}
   },
+  outputSchema: {
+    type: 'object',
+    properties: {
+      templates: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            id: { type: 'string' },
+            name: { type: 'string' },
+            title: { type: 'string' },
+            description: { type: 'string' },
+            capabilities: { type: 'array', items: { type: 'string' } }
+          },
+          required: ['id', 'name']
+        }
+      }
+    },
+    required: ['templates']
+  },
   annotations: {
     title: 'List Scan Templates',
     readOnlyHint: true,
@@ -45,7 +65,8 @@ export const listScanTemplatesToolHandler = async () => {
           type: 'text',
           text: JSON.stringify(templates, null, 2)
         }
-      ]
+      ],
+      structuredContent: templates
     };
   } catch (error) {
     const mcpError = handleNessusApiError(error);
@@ -81,6 +102,15 @@ export const startScanToolSchema = {
     },
     required: ['target', 'scan_type']
   },
+  outputSchema: {
+    type: 'object',
+    properties: {
+      scan_id: { type: 'string' },
+      status: { type: 'string' },
+      message: { type: 'string' }
+    },
+    required: ['scan_id', 'status', 'message']
+  },
   annotations: {
     title: 'Start Scan',
     readOnlyHint: false,
@@ -108,7 +138,8 @@ export const startScanToolHandler = async (args: Record<string, unknown>) => {
           type: 'text',
           text: JSON.stringify(result, null, 2)
         }
-      ]
+      ],
+      structuredContent: result
     };
   } catch (error) {
     const mcpError = handleNessusApiError(error);
@@ -140,6 +171,18 @@ export const getScanStatusToolSchema = {
     },
     required: ['scan_id']
   },
+  outputSchema: {
+    type: 'object',
+    properties: {
+      id: { type: 'string' },
+      status: { type: 'string' },
+      target: {},
+      name: { type: 'string' },
+      type: { type: 'string' },
+      created: { type: 'string' },
+      error: { type: 'string' }
+    }
+  },
   annotations: {
     title: 'Get Scan Status',
     readOnlyHint: true,
@@ -163,7 +206,8 @@ export const getScanStatusToolHandler = async (args: Record<string, unknown>) =>
           type: 'text',
           text: JSON.stringify(status, null, 2)
         }
-      ]
+      ],
+      structuredContent: status
     };
   } catch (error) {
     const mcpError = handleNessusApiError(error);
@@ -195,6 +239,49 @@ export const getScanResultsToolSchema = {
     },
     required: ['scan_id']
   },
+  outputSchema: {
+    type: 'object',
+    properties: {
+      error: { type: 'string' },
+      scan_id: { type: 'string' },
+      scan_type: { type: 'string' },
+      target: {},
+      start_time: { type: 'string' },
+      end_time: { type: 'string' },
+      status: { type: 'string' },
+      summary: {
+        type: 'object',
+        properties: {
+          total_hosts: { type: 'integer' },
+          total_vulnerabilities: { type: 'integer' },
+          critical: { type: 'integer' },
+          high: { type: 'integer' },
+          medium: { type: 'integer' },
+          low: { type: 'integer' },
+          info: { type: 'integer' }
+        }
+      },
+      vulnerabilities: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            id: { type: 'string' },
+            plugin_id: {},
+            name: { type: 'string' },
+            severity: { type: 'string' },
+            cvss_score: {},
+            count: {},
+            plugin_family: { type: 'string' },
+            description: { type: 'string' },
+            affected_systems: { type: 'array', items: { type: 'string' } },
+            remediation: { type: 'string' },
+            references: { type: 'array', items: { type: 'string' } }
+          }
+        }
+      }
+    }
+  },
   annotations: {
     title: 'Get Scan Results',
     readOnlyHint: true,
@@ -221,7 +308,8 @@ export const getScanResultsToolHandler = async (args: Record<string, unknown>) =
             text: `Error: ${results.error}`
           }
         ],
-        isError: true
+        isError: true,
+        structuredContent: results
       };
     }
 
@@ -234,7 +322,8 @@ export const getScanResultsToolHandler = async (args: Record<string, unknown>) =
           type: 'text',
           text: formattedResults
         }
-      ]
+      ],
+      structuredContent: results
     };
   } catch (error) {
     const mcpError = handleNessusApiError(error);
@@ -260,6 +349,27 @@ export const listScansToolSchema = {
     type: 'object',
     properties: {}
   },
+  outputSchema: {
+    type: 'object',
+    properties: {
+      scans: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            id: { type: 'string' },
+            name: { type: 'string' },
+            target: { type: 'string' },
+            type: { type: 'string' },
+            status: { type: 'string' },
+            created: { type: 'string' }
+          },
+          required: ['id', 'status']
+        }
+      }
+    },
+    required: ['scans']
+  },
   annotations: {
     title: 'List Scans',
     readOnlyHint: true,
@@ -280,7 +390,8 @@ export const listScansToolHandler = async () => {
           type: 'text',
           text: JSON.stringify(scans, null, 2)
         }
-      ]
+      ],
+      structuredContent: scans
     };
   } catch (error) {
     const mcpError = handleNessusApiError(error);
