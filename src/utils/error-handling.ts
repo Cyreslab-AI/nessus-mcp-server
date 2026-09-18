@@ -2,7 +2,7 @@
  * Error handling utilities for the Nessus MCP server
  */
 
-import { ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js';
+import { ProtocolError, ProtocolErrorCode } from "@modelcontextprotocol/server";
 
 /**
  * Custom error types for the Nessus MCP server
@@ -27,38 +27,38 @@ export const createNessusError = (
   type: NessusErrorType,
   message: string,
   details?: unknown
-): McpError => {
-  let code: ErrorCode;
+): ProtocolError => {
+  let code: ProtocolErrorCode;
 
   // Map Nessus error types to MCP error codes
   switch (type) {
     case NessusErrorType.SCAN_NOT_FOUND:
     case NessusErrorType.VULNERABILITY_NOT_FOUND:
-      code = ErrorCode.InvalidParams;
+      code = ProtocolErrorCode.InvalidParams;
       break;
     case NessusErrorType.INVALID_SCAN_TYPE:
     case NessusErrorType.INVALID_TARGET:
-      code = ErrorCode.InvalidParams;
+      code = ProtocolErrorCode.InvalidParams;
       break;
     case NessusErrorType.API_ERROR:
-      code = ErrorCode.InternalError;
+      code = ProtocolErrorCode.InternalError;
       break;
     case NessusErrorType.CONFIGURATION_ERROR:
-      code = ErrorCode.InternalError;
+      code = ProtocolErrorCode.InternalError;
       break;
     default:
-      code = ErrorCode.InternalError;
+      code = ProtocolErrorCode.InternalError;
   }
 
-  return new McpError(code, message, details);
+  return new ProtocolError(code, message, details);
 };
 
 /**
  * Handle errors from the Nessus API and convert them to MCP errors
  * @param error Error from the Nessus API
  */
-export const handleNessusApiError = (error: unknown): McpError => {
-  if (error instanceof McpError) {
+export const handleNessusApiError = (error: unknown): ProtocolError => {
+  if (error instanceof ProtocolError) {
     return error;
   }
 

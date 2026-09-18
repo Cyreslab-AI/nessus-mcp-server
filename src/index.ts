@@ -6,12 +6,8 @@
  * It can operate in mock mode (default) or connect to a real Nessus API.
  */
 
-import { Server } from '@modelcontextprotocol/sdk/server/index.js';
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import {
-  ListToolsRequestSchema,
-  CallToolRequestSchema
-} from '@modelcontextprotocol/sdk/types.js';
+import { StdioServerTransport } from "@modelcontextprotocol/server/stdio";
+import { Server } from "@modelcontextprotocol/server";
 import { initializeNessusApi } from './nessus-api.js';
 import { handleNessusApiError } from './utils/error-handling.js';
 
@@ -69,8 +65,8 @@ const createServer = () => {
 
   // Register tools list handler
   server.setRequestHandler(
-    ListToolsRequestSchema,
-    async () => {
+    'tools/list',
+    async (): Promise<any> => {
       return {
         tools: [
           listScanTemplatesToolSchema,
@@ -87,8 +83,8 @@ const createServer = () => {
 
   // Register tool call handler
   server.setRequestHandler(
-    CallToolRequestSchema,
-    async (request) => {
+    'tools/call',
+    async (request): Promise<any> => {
       try {
         const { name, arguments: args = {} } = request.params;
 
