@@ -1,3 +1,5 @@
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/cyreslab-ai-nessus-mcp-server-badge.png)](https://mseep.ai/app/cyreslab-ai-nessus-mcp-server)
+
 # Nessus MCP Server
 
 A Model Context Protocol (MCP) server for interacting with the Tenable Nessus vulnerability scanner. This server allows AI assistants to perform vulnerability scanning and analysis through the MCP protocol.
